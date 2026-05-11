@@ -1,133 +1,71 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "AutoBackupTool: Automated encrypted backups to Google Drive"
+description: "AutoBackupTool is a Python desktop app that compresses, encrypts, and uploads your folders to Google Drive with scheduling and one-click restore."
 ---
 
-## Setting up
+AutoBackupTool is a Python desktop application that makes secure folder backups effortless. It compresses your selected folder, encrypts the archive using Fernet symmetric encryption, and uploads it to your Google Drive — all from a clean dark-mode GUI. You can run backups once, schedule them daily or weekly, and restore any backup with a single click.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get from install to your first backup in minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Installation" icon="download" href="/installation">
+    Install Python dependencies and set up the environment
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Google Drive Setup" icon="cloud" href="/configuration/google-drive-setup">
+    Connect AutoBackupTool to your Google Drive via OAuth2
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Encryption Setup" icon="lock" href="/configuration/encryption-setup">
+    Generate and configure your Fernet encryption key
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What AutoBackupTool does
 
-Everything you need to create world-class documentation.
+AutoBackupTool combines compression, encryption, cloud storage, and scheduling into a single desktop application. Every backup is encrypted before it leaves your machine, so only you — with your credentials and encryption key — can ever access your data.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="Running Backups" icon="play" href="/guides/running-backups">
+    Start manual or scheduled backups from the GUI
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Scheduling" icon="calendar" href="/guides/scheduling">
+    Set up daily or weekly automatic backup schedules
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Restoring Backups" icon="rotate-left" href="/guides/restoring-backups">
+    Download, decrypt, and extract backups from Google Drive
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Backup Log" icon="list" href="/guides/backup-log">
+    Track your backup history with the local JSON log
   </Card>
-</Columns>
+</CardGroup>
 
-## Make your content agent ready
+## Key features
 
-Make your docs work for humans and AI agents alike.
+- **Fernet encryption** — every backup is encrypted before upload; only you can decrypt it
+- **Google Drive integration** — uploads to your personal Drive via OAuth2
+- **Flexible scheduling** — run once immediately, daily at 22:00, or weekly on Sundays
+- **Dark mode GUI** — built with tkinter/ttk, with progress bars and a live log window
+- **One-click restore** — browse Drive backups, download, decrypt, and extract in one flow
+- **Automatic rotation** — keeps only the 5 most recent backups on Drive to save space
+- **Standalone EXE** — package as a single Windows executable with PyInstaller
 
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
-</Columns>
+## Get started
 
-## Need inspiration?
+<Steps>
+  <Step title="Install dependencies">
+    Clone the repo and run `pip install -r requirements.txt` to install all required packages.
+  </Step>
+  <Step title="Set up Google Drive API">
+    Create an OAuth2 client in Google Cloud Console and download `client_secrets.json`.
+  </Step>
+  <Step title="Configure encryption">
+    Generate a Fernet key and create your `backup.env` file with the key and secrets path.
+  </Step>
+  <Step title="Launch the app">
+    Run `python backup_gui.py`, select your folder, and start your first backup.
+  </Step>
+</Steps>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+<Card title="Reference documentation" icon="book" href="/reference/backup-utils">
+  Explore the full Python API reference for backup_utils, encrypt, and the GUI module
 </Card>

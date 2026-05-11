@@ -1,0 +1,62 @@
+---
+title: "Run encrypted folder backups with AutoBackupTool"
+description: "Learn how to launch AutoBackupTool, select a folder, and run a one-time or scheduled backup that compresses, encrypts, and uploads it to Google Drive."
+---
+
+AutoBackupTool lets you back up any local folder to Google Drive with a single click. When you start a backup, the app compresses your folder, encrypts the result with your Fernet key, and streams the encrypted file to Drive — all without blocking the GUI. This page walks you through launching the app and completing your first backup.
+
+## Launch the app
+
+Open a terminal in the project directory and run:
+
+```bash
+python backup_gui.py
+```
+
+The AutoBackupPro Cloud window opens with a folder picker, schedule selector, action buttons, a progress bar, and a live log window.
+
+## Run a backup
+
+<Steps>
+  <Step title="Select a folder">
+    Click **Browse** to open a folder picker dialog. Navigate to the folder you want to back up and confirm your selection. The path appears in the text field next to the button.
+  </Step>
+  <Step title="Choose a schedule">
+    Pick a schedule option from the **Backup Schedule** panel. For a one-time backup, select **Backup Once Now**. For recurring backups, see [Scheduling](/guides/scheduling).
+  </Step>
+  <Step title="Start the backup">
+    Click **Start Backup**. The progress bar advances to 50% while the folder is being compressed and encrypted, then jumps to 100% once the file has been uploaded to Google Drive.
+  </Step>
+  <Step title="Watch the log">
+    The log window at the bottom of the app shows real-time status messages:
+
+    ```
+    [INFO] Backup scheduler started.
+    [INFO] Running backup...
+    [INFO] Uploaded. Link: https://drive.google.com/file/d/...
+    [INFO] Backup logged.
+    ```
+  </Step>
+</Steps>
+
+## What happens internally
+
+When you start a backup, the following steps run in sequence inside a background thread:
+
+1. **Compress** — the folder is walked recursively and zipped in memory using `zipfile.ZIP_DEFLATED`.
+2. **Encrypt** — the zip bytes are encrypted with Fernet using your `ENCRYPTION_KEY` from `backup.env`.
+3. **Upload** — the encrypted file is uploaded to Google Drive as `backup_YYYYMMDD_HHMMSS.enc`.
+4. **Log** — the filename, timestamp, and Drive link are appended to `backup_log.json`. See [Backup log](/guides/backup-log) for details.
+5. **Enforce the 5-backup limit** — after the upload, AutoBackupTool checks how many files with `backup_` in the title exist on Drive. If there are more than 5, the oldest (by creation date) is automatically deleted.
+
+<Note>
+  The backup runs in a background daemon thread so the GUI stays responsive throughout compression, encryption, and upload.
+</Note>
+
+## Stop a running scheduler
+
+Click **Stop Backup** at any time to clear all scheduled jobs and halt the scheduler thread. Internally this calls `schedule.clear()` and sets `self.running = False`. Note that clicking **Stop Backup** does not cancel an upload that is already in progress — it only prevents future scheduled runs from firing.
+
+<Tip>
+  Use **Run Backup Now** to trigger an immediate backup without touching the scheduler. This is useful when you want a manual snapshot outside your normal schedule while keeping the recurring schedule active.
+</Tip>

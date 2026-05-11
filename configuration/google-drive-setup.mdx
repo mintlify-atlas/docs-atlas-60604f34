@@ -1,0 +1,81 @@
+---
+title: "Connect AutoBackupTool to Google Drive"
+description: "Set up OAuth2 credentials in Google Cloud Console and authorize AutoBackupTool to upload and download files from your Google Drive."
+---
+
+This page walks you through creating OAuth2 credentials in Google Cloud Console, downloading `client_secrets.json`, and authorizing AutoBackupTool to access your Google Drive. You only need to complete this setup once — after the first authorization, AutoBackupTool saves your token and reuses it automatically.
+
+<Steps>
+  <Step title="Create or select a Google Cloud project">
+    Go to [Google Cloud Console](https://console.cloud.google.com/) and sign in with your Google account. In the top navigation bar, click the project dropdown and either select an existing project or click **New Project** to create one for AutoBackupTool.
+  </Step>
+
+  <Step title="Enable the Google Drive API">
+    Navigate to **APIs & Services** > **Library** in the left sidebar. Search for `Google Drive API` and click on it in the results. Click **Enable** to activate the API for your project.
+  </Step>
+
+  <Step title="Create OAuth client credentials">
+    Go to **APIs & Services** > **Credentials**. Click **Create Credentials** and select **OAuth client ID** from the dropdown. When prompted for the application type, choose **Desktop app**, give it a name, and click **Create**.
+
+    After the credential is created, click **Download JSON** in the confirmation dialog (or click the download icon next to the credential in the list). Rename the downloaded file to `client_secrets.json`.
+  </Step>
+
+  <Step title="Add test users (if your consent screen is in Testing mode)">
+    If your OAuth consent screen is set to **Testing** status, only explicitly listed Google accounts can authorize the app. To add your account, go to **APIs & Services** > **OAuth consent screen**, scroll down to the **Test users** section, and click **Add users**. Enter your Google email address and save.
+
+    You can check your consent screen status on the same **OAuth consent screen** page — it displays **Testing** or **In production** near the top.
+  </Step>
+
+  <Step title="Place client_secrets.json in your project directory">
+    Move `client_secrets.json` into the AutoBackupTool project folder — the same directory that contains `backup_gui.py`. AutoBackupTool looks for this file relative to where you run the app.
+
+    ```
+    AutoBackupTool/
+    ├── backup_gui.py
+    ├── backup_utils.py
+    ├── backup.env
+    ├── client_secrets.json   ← place it here
+    └── ...
+    ```
+  </Step>
+
+  <Step title="Set CLIENT_SECRETS_FILE in backup.env">
+    Open your `backup.env` file and confirm the `CLIENT_SECRETS_FILE` variable points to your credentials file:
+
+    ```env
+    CLIENT_SECRETS_FILE=client_secrets.json
+    ```
+
+    If you placed `client_secrets.json` somewhere else, use its path (relative to `backup_gui.py` or an absolute path).
+  </Step>
+</Steps>
+
+## First-run authorization
+
+The first time you run `backup_gui.py`, AutoBackupTool opens a browser window so you can sign in and grant it access to your Google Drive. After you approve, the token is saved locally to `mycreds.txt`. All subsequent runs use the saved token without reopening the browser.
+
+Here is how AutoBackupTool handles credentials on every run (`backup_utils.py`):
+
+```python
+gauth.LoadCredentialsFile("mycreds.txt")
+if gauth.credentials is None:
+    gauth.LocalWebserverAuth()
+    gauth.SaveCredentialsFile("mycreds.txt")
+elif gauth.access_token_expired:
+    gauth.Refresh()
+    gauth.SaveCredentialsFile("mycreds.txt")
+else:
+    gauth.Authorize()
+```
+
+- If `mycreds.txt` does not exist, the browser flow runs and the token is saved.
+- If the token has expired, it is refreshed automatically and the updated token is saved back to `mycreds.txt`.
+- If the token is valid, it is used directly — no browser interaction required.
+
+<Note>
+  `mycreds.txt` is the cached OAuth token written by `GoogleAuth.SaveCredentialsFile`. As long as this file exists and the token is valid (or can be refreshed), AutoBackupTool will authenticate silently on startup.
+</Note>
+
+<Warning>
+  Never commit `client_secrets.json` or `mycreds.txt` to git. Both files contain sensitive credentials that give access to your Google Drive. Add them to your `.gitignore` immediately — see the [environment variables page](/configuration/environment) for the recommended `.gitignore` entries.
+</Warning>

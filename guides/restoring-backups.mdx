@@ -1,0 +1,56 @@
+---
+title: "Restore encrypted backups from Google Drive"
+description: "Retrieve and decrypt any backup stored on Google Drive using AutoBackupTool's built-in restore dialog — download, decrypt, and extract in a few clicks."
+---
+
+If you need to recover files from a previous backup, AutoBackupTool can download, decrypt, and extract any backup stored on your Google Drive in just a few clicks. The restore flow is entirely GUI-driven — no command-line decryption or manual file handling required.
+
+## Restore a backup
+
+<Steps>
+  <Step title="Open the restore dialog">
+    Click **Restore Backup** in the main window. AutoBackupTool queries Google Drive for all files whose title contains `backup_` and opens a popup listing the results.
+  </Step>
+  <Step title="Select a backup">
+    In the popup, choose the backup you want to restore from the list. Backups are shown by their filename, for example `backup_20240115_220000.enc`.
+  </Step>
+  <Step title="Choose a destination folder">
+    Click **Restore Selected**. A folder picker opens — navigate to the directory where you want the files extracted and confirm your selection.
+  </Step>
+  <Step title="Watch the progress bar">
+    The progress bar advances to 50% when the encrypted file has been downloaded from Drive, then moves to 100% when decryption and extraction are complete.
+  </Step>
+  <Step title="Confirm success in the log">
+    The log window shows the following messages when the restore finishes:
+
+    ```
+    [INFO] Starting restore process...
+    [INFO] Backup restored successfully.
+    ```
+  </Step>
+</Steps>
+
+## What happens internally
+
+The restore process runs in a background thread and calls two functions from `backup_utils.py`:
+
+1. **`list_backups()`** — queries Drive with `title contains 'backup_'` and returns a list of `(title, file_id)` tuples used to populate the selection dialog.
+2. **`restore_backup(file_id, dest_folder, progress_callback)`** — downloads the encrypted content from Drive, calls `progress_callback(50)` after the download, then passes the encrypted bytes to `decrypt_and_extract`.
+3. **`decrypt_and_extract(encrypted_bytes, dest_folder)`** — decrypts the content with Fernet and extracts the zip archive into your chosen destination folder:
+
+```python
+def decrypt_and_extract(encrypted_bytes, dest_folder):
+    fernet = Fernet(ENCRYPTION_KEY.encode())
+    decrypted = fernet.decrypt(encrypted_bytes)
+    buf = io.BytesIO(decrypted)
+    with zipfile.ZipFile(buf, 'r') as zipf:
+        zipf.extractall(dest_folder)
+```
+
+<Note>
+  You must have the same `ENCRYPTION_KEY` in `backup.env` that was used when the backup was created. If you have rotated your key since the backup was made, Fernet will raise a decryption error and the restore will fail. There is no way to recover a backup encrypted with a different key.
+</Note>
+
+<Warning>
+  The restore extracts all files directly into the destination folder you select. Make sure the destination has enough free disk space to hold the uncompressed contents of the backup before you begin.
+</Warning>

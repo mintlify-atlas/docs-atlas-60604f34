@@ -1,0 +1,99 @@
+---
+title: "Install AutoBackupTool and its dependencies"
+description: "Set up AutoBackupTool on your system: Python 3.8+ requirements, pip install, and platform-specific notes for Windows, macOS, and Linux."
+---
+
+AutoBackupTool runs on any system with Python 3.8 or higher and internet access. This page walks you through cloning the repository, setting up an isolated virtual environment, and installing all required packages — with platform-specific instructions for Windows, macOS, and Linux.
+
+## Prerequisites
+
+Before you install, confirm you have:
+
+- **Python 3.8 or higher** — check with `python --version` or `python3 --version`
+- **A Google account with Google Drive** — required for OAuth authentication and backup storage
+- **Internet access** — needed for the initial OAuth authorization and all Drive uploads
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone AutoBackupTool from GitHub and enter the project directory:
+
+    ```bash
+    git clone https://github.com/Eraiyanbupeterfrancis/AutoBackupTool.git
+    cd AutoBackupTool
+    ```
+  </Step>
+
+  <Step title="Create a virtual environment (optional)">
+    Using a virtual environment keeps AutoBackupTool's dependencies isolated from your system Python. This step is optional but recommended.
+
+    ```bash
+    python -m venv venv
+    ```
+
+    Then activate the environment for your platform:
+
+    <Tabs>
+      <Tab title="Windows">
+        ```bash
+        venv\Scripts\activate
+        ```
+      </Tab>
+      <Tab title="macOS">
+        ```bash
+        source venv/bin/activate
+        ```
+      </Tab>
+      <Tab title="Linux">
+        ```bash
+        source venv/bin/activate
+        ```
+      </Tab>
+    </Tabs>
+
+    Your terminal prompt will show `(venv)` when the environment is active.
+  </Step>
+
+  <Step title="Install dependencies">
+    Install all required packages from `requirements.txt`:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+  </Step>
+
+  <Step title="Verify the installation">
+    Confirm all four packages installed correctly:
+
+    ```bash
+    python -c "import cryptography, pydrive2, schedule, dotenv; print('All dependencies installed')"
+    ```
+
+    If the command prints `All dependencies installed`, you're ready to configure the app.
+  </Step>
+</Steps>
+
+## Package descriptions
+
+AutoBackupTool depends on four third-party packages:
+
+| Package | Purpose |
+|---------|---------|
+| `pydrive2` | Google Drive API v2 wrapper — handles OAuth2 authentication and file upload/download |
+| `cryptography` | Provides `cryptography.Fernet` for symmetric authenticated encryption of backup archives |
+| `schedule` | In-process job scheduler for running daily and weekly backups without a system cron job |
+| `python-dotenv` | Reads `backup.env` at startup and exposes `ENCRYPTION_KEY` and `CLIENT_SECRETS_FILE` as environment variables |
+
+## Next steps
+
+With dependencies installed, configure your Google Drive connection and encryption key:
+
+<CardGroup cols={2}>
+  <Card title="Google Drive setup" icon="cloud" href="/configuration/google-drive-setup">
+    Create an OAuth2 client in Google Cloud Console and download `client_secrets.json`
+  </Card>
+  <Card title="Encryption setup" icon="lock" href="/configuration/encryption-setup">
+    Generate a Fernet key and create your `backup.env` configuration file
+  </Card>
+</CardGroup>

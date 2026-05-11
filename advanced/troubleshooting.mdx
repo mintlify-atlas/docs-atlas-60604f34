@@ -1,0 +1,107 @@
+---
+title: "Troubleshoot common AutoBackupTool issues"
+description: "Diagnose and fix the most common problems with AutoBackupTool: OAuth errors, encryption key issues, missing files, and Drive upload failures."
+---
+
+Most AutoBackupTool problems fall into a small set of categories: missing dependencies, authentication issues, encryption key mismatches, and Drive API configuration errors. Work through the relevant accordion below to diagnose and fix your issue.
+
+<AccordionGroup>
+  <Accordion title="'No module named pydrive2' or other import errors">
+    **Cause:** One or more required dependencies are not installed in your Python environment.
+
+    **Fix:** Install all dependencies from the project's `requirements.txt`:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+    Verify the packages are present:
+
+    ```bash
+    pip list
+    ```
+
+    You should see `pydrive2`, `cryptography`, `schedule`, and `python-dotenv` in the output. If any are missing, re-run the install command.
+  </Accordion>
+
+  <Accordion title="Browser does not open for OAuth / 'credentials is None'">
+    **Cause:** `mycreds.txt` is missing, empty, or corrupted — or `CLIENT_SECRETS_FILE` in `backup.env` points to the wrong path.
+
+    **Fix:**
+
+    1. Delete `mycreds.txt` if it exists, then rerun the app:
+       ```bash
+       python backup_gui.py
+       ```
+       The app will open a browser window to complete the OAuth flow and create a fresh `mycreds.txt`.
+
+    2. Confirm that `CLIENT_SECRETS_FILE` in your `backup.env` points to the correct location of `client_secrets.json`:
+       ```env
+       CLIENT_SECRETS_FILE=client_secrets.json
+       ```
+       If `client_secrets.json` is in a different directory, update the path accordingly.
+  </Accordion>
+
+  <Accordion title="'Invalid Fernet key' or decryption error">
+    **Cause:** The `ENCRYPTION_KEY` in `backup.env` is incorrect, malformed, or missing.
+
+    **Fix:**
+
+    1. Open `backup.env` and confirm the key is set:
+       ```env
+       ENCRYPTION_KEY=YOUR_BASE64_KEY_HERE
+       ```
+    2. A valid Fernet key is a base64-encoded string approximately 44 characters long, with no spaces, quotes, or line breaks.
+    3. If you need to generate a new key:
+       ```python
+       from cryptography.fernet import Fernet
+       print(Fernet.generate_key().decode())
+       ```
+
+    **Important:** if you changed your `ENCRYPTION_KEY` after creating backups, you cannot decrypt those older backups with the new key. Each backup can only be decrypted with the exact key that was used to encrypt it.
+  </Accordion>
+
+  <Accordion title="Upload fails / 'HttpError 403'">
+    **Cause:** The Google Drive API is not enabled for your project, the OAuth consent screen is misconfigured, or your quota is exceeded.
+
+    **Fix:**
+
+    1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and confirm the **Google Drive API** is enabled under **APIs & Services > Library**.
+    2. Check **APIs & Services > OAuth consent screen** — if your app is in testing mode, your Google account must be listed as a test user.
+    3. Confirm you have available Drive storage quota. A full Drive account will cause uploads to fail.
+  </Accordion>
+
+  <Accordion title="Backup runs but the GUI freezes">
+    **Cause:** Under normal operation this should not happen. Both backup and restore run on background threads so the GUI stays responsive.
+
+    **Note:** AutoBackupTool launches backup and restore operations using `threading.Thread(daemon=True)`, which keeps the main GUI thread free. If the interface feels sluggish during a backup, it is most likely during the Drive upload phase — large folders take more time to compress, encrypt, and upload. This is expected behavior, not a freeze. The progress bar will advance to 100% when the upload completes.
+  </Accordion>
+
+  <Accordion title="'No backups found' when trying to restore">
+    **Cause:** There are no files on your Drive with `backup_` in the title, or you are authenticated with a different Google account than the one used to create the backups.
+
+    **Fix:**
+
+    1. Open Google Drive in your browser and search for files named `backup_`. Confirm they exist under the correct account.
+    2. If you are authenticated with the wrong account, delete `mycreds.txt` and rerun the app to go through the OAuth flow again with the correct account:
+       ```bash
+       python backup_gui.py
+       ```
+  </Accordion>
+
+  <Accordion title="Scheduled backup didn't run">
+    **Cause:** The app window was closed before the scheduled time, or **Stop Backup** was clicked.
+
+    **Fix:** The schedule runs only while the AutoBackupTool window is open. Keep the app running until your scheduled backup time. If you clicked **Stop Backup**, click **Start Backup** again to re-register the schedule.
+  </Accordion>
+
+  <Accordion title="'backup_log.json' is empty or malformed">
+    **Cause:** This is either a first run (the log file has not been written yet) or the JSON file was corrupted.
+
+    **Note:** AutoBackupTool handles this gracefully — if `backup_log.json` is empty or contains invalid JSON, `log_backup()` initializes the log as an empty list and continues normally. No manual intervention is needed. After the next successful backup, the log file will contain a valid entry.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  If you encounter an issue not listed here, start by verifying that `backup.env` is correctly formatted and that `client_secrets.json`, `backup.env`, and (if previously authenticated) `mycreds.txt` are all present in the same directory as the app.
+</Note>

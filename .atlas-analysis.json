@@ -1,23 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "AutoBackupTool",
+  "projectType": "general",
+  "projectName": "AutoBackupTool",
+  "projectDescription": "A Python desktop application for automated, encrypted folder backups to Google Drive with scheduling and one-click restore.",
   "theme": "almond",
-  "colors": {
-    "primary": "#94cb04",
-    "light": "#545454"
-  },
-  "favicon": "https://media.brand.dev/288cc7c4-5cef-4376-950b-bdf0083eedae.png",
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/Eraiyanbupeterfrancis/AutoBackupTool"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/Eraiyanbupeterfrancis/AutoBackupTool"
-    }
-  },
+  "primaryColor": "#94cb04",
+  "lightColor": "#545454",
+  "darkColor": null,
   "navigation": {
     "tabs": [
       {
@@ -72,5 +60,25 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "Fernet symmetric encryption for all backups before upload",
+    "Google Drive integration via OAuth2 and pydrive2",
+    "Flexible scheduling: run once, daily, or weekly",
+    "Dark mode tkinter GUI with progress bars and live log",
+    "One-click restore: download, decrypt, and extract backups",
+    "Automatic 5-backup rotation on Google Drive",
+    "Local backup log in JSON format",
+    "PyInstaller support for standalone EXE distribution"
+  ],
+  "publicApiSurface": [
+    "compress_and_encrypt_folder(folder_path) -> BytesIO",
+    "upload_to_drive_stream(encrypted_stream, filename) -> str",
+    "log_backup(filename, link) -> None",
+    "list_backups() -> list[tuple[str, str]]",
+    "restore_backup(file_id, dest_folder, progress_callback=None) -> None",
+    "decrypt_and_extract(encrypted_bytes, dest_folder) -> None",
+    "get_drive_instance() -> GoogleDrive",
+    "BackupApp (tkinter GUI class)"
+  ]
 }

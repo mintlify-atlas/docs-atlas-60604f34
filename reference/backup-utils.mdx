@@ -1,0 +1,187 @@
+---
+title: "backup_utils module — Python API reference"
+description: "Complete reference for all functions in backup_utils.py: compress, encrypt, upload, log, list, restore, and decrypt operations for Google Drive backups."
+---
+
+`backup_utils.py` is the core module that handles all backup and restore logic in AutoBackupTool. It provides functions for compressing and encrypting folders, uploading to Google Drive, logging backup history, listing available backups, and restoring files.
+
+The module reads two configuration values from `backup.env` at import time:
+
+```python backup_utils.py
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+CLIENT_SECRETS_FILE = os.getenv("CLIENT_SECRETS_FILE")
+```
+
+## Functions
+
+### `get_drive_instance`
+
+```python
+def get_drive_instance() -> GoogleDrive
+```
+
+Authenticates with Google Drive and returns an authenticated `GoogleDrive` instance. Loads the OAuth client config from `CLIENT_SECRETS_FILE` and cached credentials from `mycreds.txt`. If no credentials exist, opens a browser for OAuth authorization. If the access token is expired, it is refreshed automatically. Credentials are saved to `mycreds.txt` after any change.
+
+```python backup_utils.py
+def get_drive_instance():
+    gauth = GoogleAuth()
+    gauth.LoadClientConfigFile(CLIENT_SECRETS_FILE)
+    gauth.LoadCredentialsFile("mycreds.txt")
+    if gauth.credentials is None:
+        gauth.LocalWebserverAuth()
+        gauth.SaveCredentialsFile("mycreds.txt")
+    elif gauth.access_token_expired:
+        gauth.Refresh()
+        gauth.SaveCredentialsFile("mycreds.txt")
+    else:
+        gauth.Authorize()
+    return GoogleDrive(gauth)
+```
+
+---
+
+### `compress_and_encrypt_folder`
+
+```python
+def compress_and_encrypt_folder(folder_path: str) -> io.BytesIO
+```
+
+Compresses the specified folder into a zip archive in memory, then encrypts the archive using Fernet symmetric encryption.
+
+<ParamField path="folder_path" type="str" required>
+  Absolute or relative path to the folder to back up. All files are included recursively. File paths inside the zip are relative to the parent of `folder_path`.
+</ParamField>
+
+Returns a `BytesIO` object containing the Fernet-encrypted zip data, ready to pass to `upload_to_drive_stream`.
+
+```python backup_utils.py
+def compress_and_encrypt_folder(folder_path):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, os.path.join(folder_path, '..'))
+                zipf.write(file_path, arcname)
+    buf.seek(0)
+    fernet = Fernet(ENCRYPTION_KEY.encode())
+    encrypted = fernet.encrypt(buf.read())
+    return io.BytesIO(encrypted)
+```
+
+---
+
+### `upload_to_drive_stream`
+
+```python
+def upload_to_drive_stream(encrypted_stream: io.BytesIO, filename: str) -> str
+```
+
+Uploads an encrypted stream to Google Drive and enforces the five-backup limit.
+
+<ParamField path="encrypted_stream" type="io.BytesIO" required>
+  The encrypted data to upload, as returned by `compress_and_encrypt_folder`.
+</ParamField>
+
+<ParamField path="filename" type="str" required>
+  The Drive file title. The GUI uses the format `backup_YYYYMMDD_HHMMSS.enc`.
+</ParamField>
+
+Returns the Google Drive `alternateLink` (shareable URL) for the uploaded file. After each upload, queries Drive for all files with `backup_` in the title and deletes the oldest (by `createdDate`) if more than five exist.
+
+---
+
+### `log_backup`
+
+```python
+def log_backup(filename: str, link: str) -> None
+```
+
+Appends a backup record to `backup_log.json` in the current working directory.
+
+<ParamField path="filename" type="str" required>
+  The backup filename as uploaded to Drive.
+</ParamField>
+
+<ParamField path="link" type="str" required>
+  The Google Drive `alternateLink` returned by `upload_to_drive_stream`.
+</ParamField>
+
+Each log entry has this shape:
+
+```json
+{
+  "file": "backup_20240115_220000.enc",
+  "timestamp": "2024-01-15T22:00:03.412187",
+  "cloud_link": "https://drive.google.com/file/d/..."
+}
+```
+
+Handles missing or malformed `backup_log.json` gracefully by starting with an empty list.
+
+---
+
+### `list_backups`
+
+```python
+def list_backups() -> list[tuple[str, str]]
+```
+
+Returns all backup files on Google Drive as a list of `(title, file_id)` tuples. Queries Drive for files with `backup_` in the title. Used by the GUI to populate the restore dialog.
+
+---
+
+### `restore_backup`
+
+```python
+def restore_backup(
+    file_id: str,
+    dest_folder: str,
+    progress_callback: callable = None
+) -> None
+```
+
+Downloads a backup from Google Drive, decrypts it, and extracts the contents to the destination folder.
+
+<ParamField path="file_id" type="str" required>
+  The Google Drive file ID of the backup to restore.
+</ParamField>
+
+<ParamField path="dest_folder" type="str" required>
+  Local directory path where files will be extracted.
+</ParamField>
+
+<ParamField path="progress_callback" type="callable">
+  Optional callback function. Called with `50` after the file is downloaded and with `100` after extraction completes. Used by the GUI to update the progress bar.
+</ParamField>
+
+---
+
+### `decrypt_and_extract`
+
+```python
+def decrypt_and_extract(encrypted_bytes: bytes, dest_folder: str) -> None
+```
+
+Decrypts Fernet-encrypted bytes and extracts the resulting zip archive.
+
+<ParamField path="encrypted_bytes" type="bytes" required>
+  The raw encrypted bytes downloaded from Google Drive.
+</ParamField>
+
+<ParamField path="dest_folder" type="str" required>
+  Local directory path to extract the decrypted files into.
+</ParamField>
+
+```python backup_utils.py
+def decrypt_and_extract(encrypted_bytes, dest_folder):
+    fernet = Fernet(ENCRYPTION_KEY.encode())
+    decrypted = fernet.decrypt(encrypted_bytes)
+    buf = io.BytesIO(decrypted)
+    with zipfile.ZipFile(buf, 'r') as zipf:
+        zipf.extractall(dest_folder)
+```
+
+<Note>
+  You must use the same `ENCRYPTION_KEY` that was used when the backup was created. A different key will cause `fernet.decrypt` to raise an `InvalidToken` error.
+</Note>

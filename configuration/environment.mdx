@@ -1,0 +1,107 @@
+---
+title: "Environment variables and backup.env configuration"
+description: "Reference for all backup.env configuration variables that control encryption, Google Drive credentials, and application behavior in AutoBackupTool."
+---
+
+AutoBackupTool reads its configuration from a file named `backup.env` in your project directory. This file is loaded automatically at startup using `python-dotenv` (`load_dotenv("backup.env")`). It controls the two settings required for the app to function: your encryption key and the path to your Google OAuth credentials.
+
+## backup.env.example
+
+The repository includes `backup.env.example` as a starting point:
+
+```env
+# Rename this file to backup.env and fill in your own keys before running the project
+
+ENCRYPTION_KEY=YOUR_ENCRYPTION_KEY_HERE
+CLIENT_SECRETS_FILE=client_secrets.json
+```
+
+## Variable reference
+
+### `ENCRYPTION_KEY`
+
+| Field    | Value                                          |
+| -------- | ---------------------------------------------- |
+| Required | Yes                                            |
+| Type     | String — Fernet key (32 URL-safe base64 bytes) |
+
+Your Fernet symmetric encryption key. Every backup is encrypted with this key before upload, and decrypted with it during restore. Generate a valid key by running:
+
+```bash
+python encrypt.py
+```
+
+The output is a base64-encoded string starting with characters like `gAAAAAB...`. Paste the entire string as the value — do not add quotes.
+
+---
+
+### `CLIENT_SECRETS_FILE`
+
+| Field    | Value                                             |
+| -------- | ------------------------------------------------- |
+| Required | Yes                                               |
+| Default  | `client_secrets.json`                             |
+| Type     | String — file path (relative or absolute)         |
+
+The path to your Google OAuth client secrets JSON file, downloaded from Google Cloud Console. You can use a path relative to the directory where you run `backup_gui.py`, or an absolute path.
+
+See [Connect AutoBackupTool to Google Drive](/configuration/google-drive-setup) for instructions on obtaining this file.
+
+---
+
+## How to create backup.env
+
+<Steps>
+  <Step title="Copy the example file">
+    ```bash
+    cp backup.env.example backup.env
+    ```
+  </Step>
+
+  <Step title="Generate your encryption key">
+    ```bash
+    python encrypt.py
+    ```
+
+    Copy the full key string that is printed to your terminal.
+  </Step>
+
+  <Step title="Paste the key into backup.env">
+    Open `backup.env` and replace `YOUR_ENCRYPTION_KEY_HERE` with the key you copied:
+
+    ```env
+    ENCRYPTION_KEY=gAAAAAB...
+    CLIENT_SECRETS_FILE=client_secrets.json
+    ```
+  </Step>
+
+  <Step title="Confirm the client_secrets.json path">
+    Make sure `CLIENT_SECRETS_FILE` points to wherever you placed your downloaded Google credentials file. If it is in the same directory as `backup_gui.py`, the default value `client_secrets.json` is correct.
+  </Step>
+</Steps>
+
+## Keep backup.env out of git
+
+<Warning>
+  `backup.env` contains your encryption key and indirectly controls access to your Google Drive. Add it to `.gitignore` before your first commit.
+</Warning>
+
+The README includes the following `.gitignore` entries that cover all sensitive files AutoBackupTool uses:
+
+```
+backup.env
+client_secrets.json
+mycreds.txt
+*.enc
+*.zip
+```
+
+Add these to your `.gitignore` file if they are not already present.
+
+## Next steps
+
+Once `backup.env` is configured, you are ready to run your first backup.
+
+<Card title="Running backups" icon="play" href="/guides/running-backups">
+  Learn how to select a folder, choose a schedule, and start backing up to Google Drive.
+</Card>

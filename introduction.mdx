@@ -1,0 +1,50 @@
+---
+title: "AutoBackupTool: secure desktop backup for Google Drive"
+description: "AutoBackupTool compresses, encrypts, and uploads folders to Google Drive with Fernet encryption, OAuth2 auth, and a dark-mode tkinter GUI."
+---
+
+AutoBackupTool is a Python desktop application that takes the complexity out of secure cloud backups. It solves a common problem: most backup tools either skip encryption entirely or require complex server infrastructure. AutoBackupTool handles compression, Fernet symmetric encryption, and Google Drive upload in a single dark-mode GUI — with scheduling built in so your backups run automatically without any manual effort.
+
+## How it works
+
+Every backup follows the same four-step flow:
+
+1. **Select a folder** — choose the directory you want to back up from the GUI
+2. **Compress** — AutoBackupTool zips the folder contents into an in-memory archive using `zipfile` with DEFLATE compression
+3. **Encrypt** — the archive is encrypted with a Fernet key before it ever touches the network
+4. **Upload to Drive** — the encrypted file is uploaded to your Google Drive account via the OAuth2-authenticated `pydrive2` API
+
+No unencrypted data leaves your machine at any point in this process.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Encryption" icon="lock" href="/configuration/encryption-setup">
+    Fernet symmetric encryption protects every backup before upload. Only you, with your key, can decrypt.
+  </Card>
+  <Card title="Google Drive" icon="cloud" href="/configuration/google-drive-setup">
+    Uploads to your personal Drive over OAuth2. AutoBackupTool keeps only the 5 most recent backups to manage storage.
+  </Card>
+  <Card title="Scheduling" icon="calendar" href="/guides/scheduling">
+    Run a backup once immediately, daily at 22:00, or weekly on Sundays — all configurable from the GUI.
+  </Card>
+  <Card title="Restore" icon="rotate-left" href="/guides/restoring-backups">
+    Browse Drive backups, download, decrypt, and extract to any local folder in one click.
+  </Card>
+</CardGroup>
+
+## Tech stack
+
+AutoBackupTool is built entirely on standard Python libraries and four third-party packages:
+
+| Component | Library |
+|-----------|---------|
+| Desktop GUI | `tkinter` / `ttk` (dark mode, progress bars, live log) |
+| Encryption | `cryptography.Fernet` (symmetric authenticated encryption) |
+| Google Drive | `pydrive2` (Drive API v2 wrapper with OAuth2) |
+| Scheduling | `schedule` (in-process job scheduler) |
+| Configuration | `python-dotenv` (loads `backup.env` at startup) |
+
+<Note>
+Your data is encrypted on your local machine before any network transfer begins. Google Drive only ever receives the encrypted `.enc` file — never the raw folder contents. Only you, with both your `client_secrets.json` and your `ENCRYPTION_KEY`, can access your backups.
+</Note>

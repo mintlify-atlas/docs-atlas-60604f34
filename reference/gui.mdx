@@ -1,0 +1,93 @@
+---
+title: "BackupApp GUI class reference"
+description: "Reference for the BackupApp tkinter class in backup_gui.py: all methods, GUI components, and the backup and restore workflows they trigger."
+---
+
+`BackupApp` is the main tkinter application class defined in `backup_gui.py`. It renders a 600×450 dark-mode desktop window and wires all backup and restore operations to GUI events. The class is instantiated in `__main__` with a `tk.Tk` root window.
+
+## Launch
+
+```bash
+python backup_gui.py
+```
+
+## GUI components
+
+| Component | Type | Description |
+|---|---|---|
+| Folder field | Entry + Button | Displays the selected folder path. Click **Browse** to open a directory picker. |
+| Schedule frame | LabelFrame + RadioButtons | Three options: Backup Once Now, Daily (22:00), Weekly (Sunday 22:00). |
+| Start Backup | Button | Validates folder selection, starts backup or schedule. |
+| Stop Backup | Button | Clears all scheduled jobs and stops the scheduler thread. |
+| Run Backup Now | Button | Triggers a single backup immediately, regardless of schedule. |
+| Restore Backup | Button | Opens a dialog to select and restore a Drive backup. |
+| Progress bar | ttk.Progressbar | Horizontal, determinate, 0–100. Updates during backup and restore. |
+| Log window | tk.Text | Scrolling log of `[INFO]` messages from backup and restore operations. |
+
+The dark theme is applied at init: `bg="#2e2e2e"`, `fg="#ffffff"`, `fieldbackground="#3a3a3a"`, progress bar fill `#4caf50`.
+
+## Methods
+
+### `__init__(master)`
+
+Initializes the dark ttk theme, builds all widgets, and sets `self.running = False`.
+
+---
+
+### `browse_folder()`
+
+Opens `filedialog.askdirectory()`. Updates `self.folder` StringVar if a directory is selected.
+
+---
+
+### `start_backup()`
+
+Validates that `self.folder` is set. Sets `self.running = True` and logs the scheduler start. For `"once"`, calls `run_backup()` directly. For `"daily"` or `"weekly"`, creates the schedule and starts `run_schedule` in a daemon thread.
+
+---
+
+### `stop_backup()`
+
+Sets `self.running = False` and calls `schedule.clear()` to remove all pending jobs.
+
+---
+
+### `run_schedule()`
+
+Background thread entry point. Calls `schedule.run_pending()` every second while `self.running` is `True`.
+
+---
+
+### `run_backup()`
+
+Resets the progress bar to 0 and starts `_backup_process` in a daemon thread.
+
+---
+
+### `_backup_process()`
+
+Runs in a background thread. Calls `compress_and_encrypt_folder`, updates progress to 50, calls `upload_to_drive_stream` with a timestamped filename (`backup_YYYYMMDD_HHMMSS.enc`), updates progress to 100, then calls `log_backup`.
+
+---
+
+### `restore_prompt()`
+
+Calls `list_backups()`. If the list is empty, shows an info dialog. Otherwise opens a `Toplevel` window with a `Listbox` of backup titles. On selection, opens a directory picker and starts `_restore_process` in a daemon thread.
+
+---
+
+### `_restore_process(file_id, dest)`
+
+Calls `restore_backup(file_id, dest, progress_callback=self.update_progress)`.
+
+---
+
+### `update_progress(value)`
+
+Sets `self.progress["value"] = value` and calls `self.master.update_idletasks()` to force a GUI repaint.
+
+---
+
+### `log_msg(msg)`
+
+Appends `msg + "\n"` to the `tk.Text` log widget and scrolls to the end.

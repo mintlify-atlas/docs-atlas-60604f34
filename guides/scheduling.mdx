@@ -1,0 +1,47 @@
+---
+title: "Schedule automatic backups with AutoBackupTool"
+description: "Configure AutoBackupTool to run backups automatically on a daily or weekly schedule using the built-in Python schedule library, with no cron or system service needed."
+---
+
+AutoBackupTool has three schedule modes powered by the [`schedule`](https://schedule.readthedocs.io/) Python library. You select a mode before clicking **Start Backup**, and the app handles the rest — running your backup at the right time without any external cron jobs or system services required.
+
+## Schedule options
+
+<AccordionGroup>
+  <Accordion title="Backup Once Now">
+    Runs a single backup immediately when you click **Start Backup**. No recurring schedule is created, and no background scheduler thread is started. Use this when you want a one-off snapshot of your folder.
+  </Accordion>
+  <Accordion title="Daily (22:00)">
+    Schedules a backup every day at 22:00 using `schedule.every().day.at("22:00")`. A background daemon thread starts and checks for pending jobs every second. **The app must remain open** for the scheduled backup to fire.
+  </Accordion>
+  <Accordion title="Weekly (Sunday 22:00)">
+    Schedules a backup every Sunday at 22:00 using `schedule.every().sunday.at("22:00")`. Like the daily option, this requires the app to stay open for the job to run.
+  </Accordion>
+</AccordionGroup>
+
+## How scheduling works
+
+When you click **Start Backup** with a recurring schedule selected, AutoBackupTool registers a job with the `schedule` library and starts a background daemon thread that loops until you stop it:
+
+```python
+if self.schedule_var.get() == "once":
+    self.run_backup()
+elif self.schedule_var.get() == "daily":
+    schedule.every().day.at("22:00").do(self.run_backup)
+elif self.schedule_var.get() == "weekly":
+    schedule.every().sunday.at("22:00").do(self.run_backup)
+if self.schedule_var.get() != "once":
+    threading.Thread(target=self.run_schedule, daemon=True).start()
+```
+
+The daemon thread calls `schedule.run_pending()` every second and continues running as long as the app window is open and `self.running` is `True`. Each time a scheduled job fires, it triggers `run_backup()`, which compresses, encrypts, and uploads your folder to Google Drive.
+
+Click **Stop Backup** to clear all scheduled jobs with `schedule.clear()` and stop the thread. You can then choose a new schedule and click **Start Backup** again without restarting the app.
+
+<Warning>
+  The app must remain open for scheduled backups to fire. If you close the AutoBackupPro Cloud window, the scheduler stops and no further backups will run until you reopen the app and click **Start Backup** again.
+</Warning>
+
+<Tip>
+  For unattended daily backups, consider keeping the app minimized or packaging it as a standalone executable — see [Building an executable](/advanced/building-executable).
+</Tip>

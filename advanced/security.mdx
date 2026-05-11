@@ -1,0 +1,78 @@
+---
+title: "Security model and best practices for AutoBackupTool"
+description: "Understand how AutoBackupTool protects your data with Fernet encryption, OAuth2 scoped access, and what you must do to keep backups secure."
+---
+
+AutoBackupTool's security is built on two pillars: Fernet symmetric encryption and OAuth2-scoped Google Drive access. Together they ensure that your backup data is unreadable in transit and at rest on Drive, and that access to your Google account is tightly scoped and token-based.
+
+## Encryption
+
+All data is compressed and encrypted locally before any bytes leave your machine. AutoBackupTool uses **Fernet** from the Python `cryptography` library, which combines AES-128-CBC for confidentiality with HMAC-SHA256 for integrity verification. This means an encrypted backup cannot be silently tampered with — any modification to the `.enc` file will cause decryption to fail outright.
+
+The same key is used to encrypt and to decrypt. There is no asymmetric component: whoever has `ENCRYPTION_KEY` can decrypt any backup made with it. Backup files stored on Drive carry the `.enc` extension and are completely unreadable without the key.
+
+```python
+# From backup_utils.py — encryption at upload time
+fernet = Fernet(ENCRYPTION_KEY.encode())
+encrypted = fernet.encrypt(buf.read())
+
+# From backup_utils.py — decryption at restore time
+fernet = Fernet(ENCRYPTION_KEY.encode())
+decrypted = fernet.decrypt(encrypted_bytes)
+```
+
+## OAuth2 and Google Drive access
+
+AutoBackupTool authenticates with Google Drive using OAuth2 via the `pydrive2` library. Access is scoped to your personal Drive — the app cannot access other users' files or any data outside your account.
+
+Credentials are stored locally in `mycreds.txt`, which holds your Google access token and refresh token. The app refreshes tokens automatically when they expire, without requiring you to log in again:
+
+```python
+# From backup_utils.py — automatic token refresh
+if gauth.credentials is None:
+    gauth.LocalWebserverAuth()
+    gauth.SaveCredentialsFile("mycreds.txt")
+elif gauth.access_token_expired:
+    gauth.Refresh()
+    gauth.SaveCredentialsFile("mycreds.txt")
+else:
+    gauth.Authorize()
+```
+
+Due to the OAuth scope used, the app can only see and manage files it created — it does not have broad access to everything in your Drive.
+
+## What you must protect
+
+Three files control all access to your backups. Treat them like passwords:
+
+- **`ENCRYPTION_KEY` in `backup.env`** — losing this key means you cannot decrypt any existing backups. There is no recovery path.
+- **`client_secrets.json`** — contains your OAuth app credentials. Anyone with this file can impersonate your OAuth application.
+- **`mycreds.txt`** — contains your active Google account access and refresh token. Anyone with this file can access your Drive backups until the token is revoked.
+
+## What attackers cannot do
+
+Even if an attacker gains access to your Google Drive, they are limited by what they do not have:
+
+- They cannot read your backup contents without `ENCRYPTION_KEY`.
+- They cannot authenticate as your OAuth app without `client_secrets.json` and `mycreds.txt`.
+- They cannot forge or tamper with a backup silently — Fernet's HMAC-SHA256 verification will detect any modification and refuse to decrypt.
+
+## Recommended practices
+
+Follow these practices to keep your backups secure over time:
+
+- Store `ENCRYPTION_KEY` in a password manager (e.g. 1Password, Bitwarden). Do not rely solely on `backup.env` as a backup of the key.
+- Add `backup.env`, `client_secrets.json`, and `mycreds.txt` to your `.gitignore` so they are never accidentally committed to a repository:
+  ```
+  backup.env
+  client_secrets.json
+  mycreds.txt
+  *.enc
+  *.zip
+  ```
+- Rotate your encryption key periodically. Note that rotating the key requires re-encrypting all existing backups manually — existing `.enc` files cannot be decrypted with a new key.
+- In a production environment, use a dedicated Google account or a separate Google Cloud project for the OAuth app, so that its access is isolated from your personal account.
+
+<Warning>
+  If you lose your `ENCRYPTION_KEY`, no recovery is possible. Fernet encryption without the correct key is computationally infeasible to break. Back up the key separately from your backups themselves.
+</Warning>

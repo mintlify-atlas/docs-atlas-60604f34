@@ -1,0 +1,73 @@
+---
+title: "Configure Fernet encryption for your backups"
+description: "Generate a Fernet symmetric key and store it in backup.env so AutoBackupTool can encrypt every backup before uploading to Google Drive."
+---
+
+AutoBackupTool encrypts every backup using [Fernet](https://cryptography.io/en/latest/fernet/) symmetric encryption from the `cryptography` library. Your data is encrypted in memory before any network transfer occurs — nothing unencrypted ever leaves your machine.
+
+## How encryption works
+
+When you trigger a backup, AutoBackupTool runs the following pipeline entirely in memory:
+
+1. **Compress** — the selected folder is zipped into an in-memory buffer using `zipfile.ZIP_DEFLATED`.
+2. **Encrypt** — the zip buffer is encrypted with your Fernet key, producing an encrypted binary blob.
+3. **Upload** — the encrypted blob is uploaded to Google Drive as a `.enc` file.
+
+When you restore, the process runs in reverse: download → Fernet decrypt → unzip to destination folder. At no point is unencrypted data written to a temporary file.
+
+## Generate your encryption key
+
+AutoBackupTool includes `encrypt.py` to generate a new key:
+
+```python
+from cryptography.fernet import Fernet
+print(Fernet.generate_key().decode())
+```
+
+Run it from your project directory:
+
+```bash
+python encrypt.py
+```
+
+This prints a base64-encoded key to your terminal:
+
+```
+gAAAAAB...
+```
+
+Copy the entire output — you will paste it into `backup.env` in the next step.
+
+<Info>
+  Fernet keys are 32 bytes of random data, encoded as URL-safe base64. The same key is used to both encrypt and decrypt — keep it secret, keep it safe.
+</Info>
+
+## Store the key in backup.env
+
+Open (or create) `backup.env` in your project directory and set `ENCRYPTION_KEY` to the value you just generated:
+
+```env
+ENCRYPTION_KEY=YOUR_ENCRYPTION_KEY_HERE
+CLIENT_SECRETS_FILE=client_secrets.json
+```
+
+Replace `YOUR_ENCRYPTION_KEY_HERE` with the full key string printed by `encrypt.py`.
+
+## How the key is loaded at runtime
+
+`backup_utils.py` loads the key from `backup.env` at startup using `python-dotenv`, then passes it directly to Fernet:
+
+```python
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+```
+
+```python
+fernet = Fernet(ENCRYPTION_KEY.encode())
+encrypted = fernet.encrypt(buf.read())
+```
+
+The key is read once when the module loads and held in memory for the duration of the session. No key material is written to disk beyond what is already in `backup.env`.
+
+<Warning>
+  If you lose your encryption key, you cannot decrypt your existing backups — there is no recovery mechanism. Store your key in a password manager or a secure note. Never commit `backup.env` to git.
+</Warning>
